@@ -29,8 +29,17 @@ func main() {
 	userService := services.NewUserService(userRepository)
 	userHandler := handlers.NewUserHandler(userService)
 
+	ticketRepository := repositories.NewTicketRepository(database.DB)
+	ticketService := services.NewTicketService(ticketRepository)
+	ticketHandler := handlers.NewTicketHandler(ticketService)
+
+	transactionRepository := repositories.NewTransactionRepository(database.DB)
+	paymentRepository := repositories.NewPaymentRepository(database.DB)
+	transactionService := services.NewTransactionService(database.DB, ticketRepository, transactionRepository, paymentRepository)
+	transactionHandler := handlers.NewTransactionHandler(transactionService)
+
 	router := gin.Default()
-	routes.Register(router, userHandler)
+	routes.Register(router, userHandler, ticketHandler, transactionHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {

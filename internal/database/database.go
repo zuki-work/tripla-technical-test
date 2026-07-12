@@ -33,7 +33,12 @@ func Connect() error {
 
 	// Run Auto-migrations
 	log.Println("Running database migrations...")
-	if err := DB.AutoMigrate(&models.User{}); err != nil {
+	if err := DB.AutoMigrate(
+		&models.User{},
+		&models.Ticket{},
+		&models.Transaction{},
+		&models.Payment{},
+	); err != nil {
 		return fmt.Errorf("database auto-migration failed: %w", err)
 	}
 	log.Println("Database migration completed successfully")
