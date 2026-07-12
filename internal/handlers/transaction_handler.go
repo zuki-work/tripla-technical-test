@@ -25,6 +25,10 @@ type createTransactionRequest struct {
 	Quantity uint `json:"quantity" binding:"required"`
 }
 
+type processPendingTransactionsRequest struct {
+	Limit int `json:"limit"`
+}
+
 type payTransactionRequest struct {
 	PaymentMethod string `json:"payment_method"`
 }
@@ -42,7 +46,7 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": transaction})
+	c.JSON(http.StatusAccepted, gin.H{"data": transaction})
 }
 
 func (h *TransactionHandler) GetTransactions(c *gin.Context) {
@@ -69,6 +73,22 @@ func (h *TransactionHandler) GetTransaction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": transaction})
+}
+
+func (h *TransactionHandler) ProcessPendingTransactions(c *gin.Context) {
+	var input processPendingTransactionsRequest
+	if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.transactionService.ProcessPendingTransactions(input.Limit)
+	if err != nil {
+		writeTransactionError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": result})
 }
 
 func (h *TransactionHandler) PayTransaction(c *gin.Context) {
@@ -99,7 +119,7 @@ func writeTransactionError(c *gin.Context, err error) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "record not found"})
 	case errors.Is(err, services.ErrInvalidTransactionQuantity),
 		errors.Is(err, services.ErrInsufficientTickets),
-		errors.Is(err, services.ErrTransactionNotPending),
+		errors.Is(err, services.ErrTransactionNotWaitingForPayment),
 		errors.Is(err, services.ErrTransactionExpired):
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	default:

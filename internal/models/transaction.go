@@ -7,19 +7,25 @@ import (
 )
 
 const (
-	TransactionStatusPending   = "pending"
-	TransactionStatusConfirmed = "confirmed"
-	TransactionStatusCancelled = "cancelled"
-	TransactionStatusExpired   = "expired"
+	TransactionStatusPending           = "pending"
+	TransactionStatusProcessing        = "processing"
+	TransactionStatusWaitingForPayment = "waiting_for_payment"
+	TransactionStatusSuccess           = "success"
+	TransactionStatusFailed            = "failed"
+	TransactionStatusCancelled         = "cancelled"
+	TransactionStatusExpired           = "expired"
 )
 
 type Transaction struct {
 	gorm.Model
-	UserID    uint      `json:"user_id" binding:"required"`
-	User      User      `json:"user"`
-	TicketID  uint      `json:"ticket_id" binding:"required"`
-	Ticket    Ticket    `json:"ticket"`
-	Quantity  uint      `json:"quantity" binding:"required"`
-	Status    string    `json:"status" gorm:"type:varchar(20);index"`
-	ExpiresAt time.Time `json:"expires_at"`
+	RequestID    string     `json:"request_id" gorm:"type:varchar(64);index"`
+	UserID       uint       `json:"user_id" binding:"required"`
+	User         User       `json:"user"`
+	TicketID     uint       `json:"ticket_id" binding:"required"`
+	Ticket       Ticket     `json:"ticket"`
+	Quantity     uint       `json:"quantity" binding:"required"`
+	Status       string     `json:"status" gorm:"type:varchar(30);index"`
+	FailedReason string     `json:"failed_reason"`
+	ProcessedAt  *time.Time `json:"processed_at"`
+	ExpiresAt    *time.Time `json:"expires_at"`
 }

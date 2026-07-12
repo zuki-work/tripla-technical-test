@@ -219,7 +219,7 @@
                                                                                "transactions"
                                                                            ]
                                                               },
-                                                      "description":  "Creates a pending transaction, reserves ticket quantity, and sets an expiry time. Use the returned ID as transactionId."
+                                                      "description":  "Stores a new transaction request with status pending. Stock is not reserved until Process Pending Transactions runs."
                                                   },
                                       "response":  [
 
@@ -241,7 +241,38 @@
                                                                                "transactions"
                                                                            ]
                                                               },
-                                                      "description":  "Retrieves all transactions. Expired pending transactions are restored before the list is returned."
+                                                      "description":  "Retrieves all transactions. Expired waiting_for_payment transactions are restored before the list is returned."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Process Pending Transactions",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"limit\": 100\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/workers/transactions/process-pending",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "transactions",
+                                                                               "process-pending"
+                                                                           ]
+                                                              },
+                                                      "description":  "Worker-style endpoint for this API-only demo. It processes pending transactions into waiting_for_payment or failed."
                                                   },
                                       "response":  [
 
@@ -264,7 +295,7 @@
                                                                                "{{transactionId}}"
                                                                            ]
                                                               },
-                                                      "description":  "Retrieves one transaction by ID. Expired pending transactions are restored before the transaction is returned."
+                                                      "description":  "Retrieves one transaction by ID. Expired waiting_for_payment transactions are restored before the transaction is returned."
                                                   },
                                       "response":  [
 
@@ -296,7 +327,7 @@
                                                                                "pay"
                                                                            ]
                                                               },
-                                                      "description":  "Simulates a successful payment, creates a payment record, and confirms the transaction."
+                                                      "description":  "Simulates a successful payment. This only works after the transaction status becomes waiting_for_payment."
                                                   },
                                       "response":  [
 
@@ -332,7 +363,38 @@
                                                                                "concurrency"
                                                                            ]
                                                               },
-                                                      "description":  "Creates a demo user and a 1-stock VIP ticket, then runs concurrent transaction attempts to prove only one succeeds."
+                                                      "description":  "Creates a demo user, a 1-stock VIP ticket, many pending transactions, then runs worker processing concurrently to prove only one reaches waiting_for_payment and the rest fail."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Run High Traffic Demo",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"request_count\": 1000,\n  \"ticket_stock\": 1000,\n  \"worker_count\": 10,\n  \"worker_batch_size\": 100\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/demo/high-traffic",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "demo",
+                                                                               "high-traffic"
+                                                                           ]
+                                                              },
+                                                      "description":  "Creates many pending transactions first, then processes them through worker-style batches to demonstrate the high-traffic intake flow."
                                                   },
                                       "response":  [
 

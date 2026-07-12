@@ -9,24 +9,50 @@ import (
 )
 
 const (
-	defaultDemoAttempts = 10
-	maxDemoAttempts     = 50
+	defaultDemoAttempts           = 10
+	maxDemoAttempts               = 50
+	defaultHighTrafficRequests    = 1000
+	maxHighTrafficRequests        = 10000
+	defaultHighTrafficTicketStock = 1000
+	defaultHighTrafficWorkerCount = 10
+	maxHighTrafficWorkerCount     = 100
+	defaultHighTrafficWorkerBatch = 100
+	maxHighTrafficWorkerBatch     = 1000
 )
 
 type ConcurrencyDemoResult struct {
 	Attempt       int    `json:"attempt"`
-	Status        string `json:"status"`
 	TransactionID uint   `json:"transaction_id,omitempty"`
+	RequestID     string `json:"request_id,omitempty"`
+	Status        string `json:"status"`
+	FailedReason  string `json:"failed_reason,omitempty"`
 	Error         string `json:"error,omitempty"`
 }
 
 type ConcurrencyDemoSummary struct {
-	User         *models.User            `json:"user"`
-	Ticket       *models.Ticket          `json:"ticket"`
-	Attempts     int                     `json:"attempts"`
-	SuccessCount int                     `json:"success_count"`
-	FailedCount  int                     `json:"failed_count"`
-	Results      []ConcurrencyDemoResult `json:"results"`
+	User                   *models.User            `json:"user"`
+	Ticket                 *models.Ticket          `json:"ticket"`
+	Attempts               int                     `json:"attempts"`
+	PendingCreatedCount    int                     `json:"pending_created_count"`
+	WaitingForPaymentCount int                     `json:"waiting_for_payment_count"`
+	FailedCount            int                     `json:"failed_count"`
+	Results                []ConcurrencyDemoResult `json:"results"`
+}
+
+type HighTrafficDemoSummary struct {
+	User                   *models.User   `json:"user"`
+	Ticket                 *models.Ticket `json:"ticket"`
+	RequestedCount         int            `json:"requested_count"`
+	TicketStock            uint           `json:"ticket_stock"`
+	WorkerCount            int            `json:"worker_count"`
+	WorkerBatchSize        int            `json:"worker_batch_size"`
+	StoredPendingCount     int            `json:"stored_pending_count"`
+	ProcessedCount         int            `json:"processed_count"`
+	WaitingForPaymentCount int            `json:"waiting_for_payment_count"`
+	FailedCount            int            `json:"failed_count"`
+	CreateDurationMs       int64          `json:"create_duration_ms"`
+	ProcessDurationMs      int64          `json:"process_duration_ms"`
+	TotalDurationMs        int64          `json:"total_duration_ms"`
 }
 
 type DemoService struct {
@@ -69,37 +95,59 @@ func (s *DemoService) RunConcurrencyDemo(attempts int) (*ConcurrencyDemoSummary,
 	}
 
 	results := make([]ConcurrencyDemoResult, attempts)
-	var wg sync.WaitGroup
-
 	for i := 0; i < attempts; i++ {
-		wg.Add(1)
-		go func(index int) {
-			defer wg.Done()
-
-			transaction, err := s.transactionService.CreateTransaction(user.ID, ticket.ID, 1)
-			if err != nil {
-				results[index] = ConcurrencyDemoResult{
-					Attempt: index + 1,
-					Status:  "failed",
-					Error:   err.Error(),
-				}
-				return
+		transaction, err := s.transactionService.CreateTransaction(user.ID, ticket.ID, 1)
+		if err != nil {
+			results[i] = ConcurrencyDemoResult{
+				Attempt: i + 1,
+				Status:  "create_failed",
+				Error:   err.Error(),
 			}
+			continue
+		}
 
-			results[index] = ConcurrencyDemoResult{
-				Attempt:       index + 1,
-				Status:        "success",
-				TransactionID: transaction.ID,
-			}
-		}(i)
+		results[i] = ConcurrencyDemoResult{
+			Attempt:       i + 1,
+			TransactionID: transaction.ID,
+			RequestID:     transaction.RequestID,
+			Status:        transaction.Status,
+		}
 	}
 
+	var wg sync.WaitGroup
+	for i := 0; i < attempts; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = s.transactionService.ProcessPendingTransactions(1)
+		}()
+	}
 	wg.Wait()
 
-	successCount := 0
-	for _, result := range results {
-		if result.Status == "success" {
-			successCount++
+	pendingCreatedCount := 0
+	waitingForPaymentCount := 0
+	failedCount := 0
+	for i := range results {
+		if results[i].Status == models.TransactionStatusPending {
+			pendingCreatedCount++
+		}
+		if results[i].TransactionID == 0 {
+			continue
+		}
+
+		transaction, err := s.transactionService.GetTransaction(results[i].TransactionID)
+		if err != nil {
+			results[i].Error = err.Error()
+			continue
+		}
+
+		results[i].Status = transaction.Status
+		results[i].FailedReason = transaction.FailedReason
+		if transaction.Status == models.TransactionStatusWaitingForPayment {
+			waitingForPaymentCount++
+		}
+		if transaction.Status == models.TransactionStatusFailed {
+			failedCount++
 		}
 	}
 
@@ -109,11 +157,136 @@ func (s *DemoService) RunConcurrencyDemo(attempts int) (*ConcurrencyDemoSummary,
 	}
 
 	return &ConcurrencyDemoSummary{
-		User:         user,
-		Ticket:       finalTicket,
-		Attempts:     attempts,
-		SuccessCount: successCount,
-		FailedCount:  attempts - successCount,
-		Results:      results,
+		User:                   user,
+		Ticket:                 finalTicket,
+		Attempts:               attempts,
+		PendingCreatedCount:    pendingCreatedCount,
+		WaitingForPaymentCount: waitingForPaymentCount,
+		FailedCount:            failedCount,
+		Results:                results,
+	}, nil
+}
+
+func (s *DemoService) RunHighTrafficDemo(requestCount int, ticketStock uint, workerCount int, workerBatchSize int) (*HighTrafficDemoSummary, error) {
+	if requestCount <= 0 {
+		requestCount = defaultHighTrafficRequests
+	}
+	if requestCount > maxHighTrafficRequests {
+		requestCount = maxHighTrafficRequests
+	}
+	if ticketStock == 0 {
+		ticketStock = defaultHighTrafficTicketStock
+	}
+	if workerCount <= 0 {
+		workerCount = defaultHighTrafficWorkerCount
+	}
+	if workerCount > maxHighTrafficWorkerCount {
+		workerCount = maxHighTrafficWorkerCount
+	}
+	if workerBatchSize <= 0 {
+		workerBatchSize = defaultHighTrafficWorkerBatch
+	}
+	if workerBatchSize > maxHighTrafficWorkerBatch {
+		workerBatchSize = maxHighTrafficWorkerBatch
+	}
+
+	startedAt := time.Now()
+	now := startedAt.UnixNano()
+	user, err := s.userService.CreateUser(&models.User{
+		Name:  "High Traffic Demo User",
+		Email: fmt.Sprintf("high-traffic-demo-%d@example.com", now),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	ticket, err := s.ticketService.CreateTicket(&models.Ticket{
+		Name:          fmt.Sprintf("High Traffic Demo Ticket %d", now),
+		QuantityTotal: ticketStock,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	createStartedAt := time.Now()
+	storedPendingCount := 0
+	for i := 0; i < requestCount; i++ {
+		transaction, err := s.transactionService.CreateTransaction(user.ID, ticket.ID, 1)
+		if err != nil {
+			return nil, err
+		}
+		if transaction.Status == models.TransactionStatusPending {
+			storedPendingCount++
+		}
+	}
+	createDuration := time.Since(createStartedAt)
+
+	processStartedAt := time.Now()
+	processedCount := 0
+	waitingForPaymentCount := 0
+	failedCount := 0
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var processErr error
+
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				mu.Lock()
+				shouldContinue := processedCount < requestCount && processErr == nil
+				mu.Unlock()
+				if !shouldContinue {
+					return
+				}
+
+				result, err := s.transactionService.ProcessPendingTransactionsWithoutExpiry(workerBatchSize)
+				if err != nil {
+					mu.Lock()
+					if processErr == nil {
+						processErr = err
+					}
+					mu.Unlock()
+					return
+				}
+				if result.ProcessedCount == 0 {
+					return
+				}
+
+				mu.Lock()
+				processedCount += result.ProcessedCount
+				waitingForPaymentCount += result.WaitingForPaymentCount
+				failedCount += result.FailedCount
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	if processErr != nil {
+		return nil, processErr
+	}
+	processDuration := time.Since(processStartedAt)
+
+	finalTicket, err := s.ticketService.GetTicket(ticket.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HighTrafficDemoSummary{
+		User:                   user,
+		Ticket:                 finalTicket,
+		RequestedCount:         requestCount,
+		TicketStock:            ticketStock,
+		WorkerCount:            workerCount,
+		WorkerBatchSize:        workerBatchSize,
+		StoredPendingCount:     storedPendingCount,
+		ProcessedCount:         processedCount,
+		WaitingForPaymentCount: waitingForPaymentCount,
+		FailedCount:            failedCount,
+		CreateDurationMs:       createDuration.Milliseconds(),
+		ProcessDurationMs:      processDuration.Milliseconds(),
+		TotalDurationMs:        time.Since(startedAt).Milliseconds(),
 	}, nil
 }
