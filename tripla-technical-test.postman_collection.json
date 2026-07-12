@@ -1,246 +1,366 @@
 {
-  "info": {
-    "_postman_id": "9b1c7dc4-a957-46a4-bb5c-ff1c9dfd6e32",
-    "name": "Tripla Technical Test",
-    "description": "Postman Collection for the Go concert ticket transaction API in the tripla-technical-test repository.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "System",
-      "item": [
-        {
-          "name": "Get Home Message",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/",
-              "host": ["{{baseUrl}}"],
-              "path": [""]
-            },
-            "description": "Retrieves the welcome message from the root endpoint."
-          },
-          "response": []
-        },
-        {
-          "name": "Health Check",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["health"]
-            },
-            "description": "Verifies that the API server is healthy and running."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Users",
-      "item": [
-        {
-          "name": "Create User",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"]
-            },
-            "description": "Registers a new user in the database. Use the returned ID as userId."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Users",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users",
-              "host": ["{{baseUrl}}"],
-              "path": ["users"]
-            },
-            "description": "Retrieves the list of all registered users."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Tickets",
-      "item": [
-        {
-          "name": "Create Ticket",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Regular Concert Ticket\",\n  \"quantity_total\": 100\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/tickets",
-              "host": ["{{baseUrl}}"],
-              "path": ["tickets"]
-            },
-            "description": "Creates a concert ticket type. quantity_available is automatically set from quantity_total."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Tickets",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/tickets",
-              "host": ["{{baseUrl}}"],
-              "path": ["tickets"]
-            },
-            "description": "Retrieves all ticket types and their available quantities."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Ticket By ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/tickets/{{ticketId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["tickets", "{{ticketId}}"]
-            },
-            "description": "Retrieves one ticket type by ID."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Transactions",
-      "item": [
-        {
-          "name": "Create Transaction",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"user_id\": {{userId}},\n  \"ticket_id\": {{ticketId}},\n  \"quantity\": 2\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/transactions",
-              "host": ["{{baseUrl}}"],
-              "path": ["transactions"]
-            },
-            "description": "Creates a pending transaction, reserves ticket quantity, and sets an expiry time. Use the returned ID as transactionId."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Transactions",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/transactions",
-              "host": ["{{baseUrl}}"],
-              "path": ["transactions"]
-            },
-            "description": "Retrieves all transactions. Expired pending transactions are restored before the list is returned."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Transaction By ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/transactions/{{transactionId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["transactions", "{{transactionId}}"]
-            },
-            "description": "Retrieves one transaction by ID. Expired pending transactions are restored before the transaction is returned."
-          },
-          "response": []
-        },
-        {
-          "name": "Pay Transaction",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"payment_method\": \"auto\"\n}"
-            },
-            "url": {
-              "raw": "{{baseUrl}}/transactions/{{transactionId}}/pay",
-              "host": ["{{baseUrl}}"],
-              "path": ["transactions", "{{transactionId}}", "pay"]
-            },
-            "description": "Simulates a successful payment, creates a payment record, and confirms the transaction."
-          },
-          "response": []
-        }
-      ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:8081",
-      "type": "string"
-    },
-    {
-      "key": "userId",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "ticketId",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "transactionId",
-      "value": "1",
-      "type": "string"
-    }
-  ]
+    "info":  {
+                 "_postman_id":  "9b1c7dc4-a957-46a4-bb5c-ff1c9dfd6e32",
+                 "name":  "Tripla Technical Test",
+                 "description":  "Postman Collection for the Go concert ticket transaction API in the tripla-technical-test repository.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "item":  [
+                 {
+                     "name":  "System",
+                     "item":  [
+                                  {
+                                      "name":  "Get Home Message",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               ""
+                                                                           ]
+                                                              },
+                                                      "description":  "Retrieves the welcome message from the root endpoint."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Health Check",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/health",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "health"
+                                                                           ]
+                                                              },
+                                                      "description":  "Verifies that the API server is healthy and running."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Users",
+                     "item":  [
+                                  {
+                                      "name":  "Create User",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/users",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "users"
+                                                                           ]
+                                                              },
+                                                      "description":  "Registers a new user in the database. Use the returned ID as userId."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Get Users",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/users",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "users"
+                                                                           ]
+                                                              },
+                                                      "description":  "Retrieves the list of all registered users."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Tickets",
+                     "item":  [
+                                  {
+                                      "name":  "Create Ticket",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"name\": \"Regular Concert Ticket\",\n  \"quantity_total\": 100\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tickets",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tickets"
+                                                                           ]
+                                                              },
+                                                      "description":  "Creates a concert ticket type. quantity_available is automatically set from quantity_total."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Get Tickets",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tickets",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tickets"
+                                                                           ]
+                                                              },
+                                                      "description":  "Retrieves all ticket types and their available quantities."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Get Ticket By ID",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/tickets/{{ticketId}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "tickets",
+                                                                               "{{ticketId}}"
+                                                                           ]
+                                                              },
+                                                      "description":  "Retrieves one ticket type by ID."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Transactions",
+                     "item":  [
+                                  {
+                                      "name":  "Create Transaction",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"user_id\": {{userId}},\n  \"ticket_id\": {{ticketId}},\n  \"quantity\": 2\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/transactions",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "transactions"
+                                                                           ]
+                                                              },
+                                                      "description":  "Creates a pending transaction, reserves ticket quantity, and sets an expiry time. Use the returned ID as transactionId."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Get Transactions",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/transactions",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "transactions"
+                                                                           ]
+                                                              },
+                                                      "description":  "Retrieves all transactions. Expired pending transactions are restored before the list is returned."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Get Transaction By ID",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/transactions/{{transactionId}}",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "transactions",
+                                                                               "{{transactionId}}"
+                                                                           ]
+                                                              },
+                                                      "description":  "Retrieves one transaction by ID. Expired pending transactions are restored before the transaction is returned."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Pay Transaction",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"payment_method\": \"auto\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/transactions/{{transactionId}}/pay",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "transactions",
+                                                                               "{{transactionId}}",
+                                                                               "pay"
+                                                                           ]
+                                                              },
+                                                      "description":  "Simulates a successful payment, creates a payment record, and confirms the transaction."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Demo",
+                     "item":  [
+                                  {
+                                      "name":  "Run Concurrency Demo",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"attempts\": 10\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/demo/concurrency",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "demo",
+                                                                               "concurrency"
+                                                                           ]
+                                                              },
+                                                      "description":  "Creates a demo user and a 1-stock VIP ticket, then runs concurrent transaction attempts to prove only one succeeds."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  }
+                              ]
+                 }
+             ],
+    "variable":  [
+                     {
+                         "key":  "baseUrl",
+                         "value":  "http://localhost:8081",
+                         "type":  "string"
+                     },
+                     {
+                         "key":  "userId",
+                         "value":  "1",
+                         "type":  "string"
+                     },
+                     {
+                         "key":  "ticketId",
+                         "value":  "1",
+                         "type":  "string"
+                     },
+                     {
+                         "key":  "transactionId",
+                         "value":  "1",
+                         "type":  "string"
+                     }
+                 ]
 }

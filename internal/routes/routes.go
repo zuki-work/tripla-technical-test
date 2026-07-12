@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandler *handlers.TicketHandler, transactionHandler *handlers.TransactionHandler) {
+func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandler *handlers.TicketHandler, transactionHandler *handlers.TransactionHandler, demoHandler *handlers.DemoHandler) {
 	router.GET("/", handlers.Home)
 	router.GET("/health", handlers.Health)
 
@@ -21,4 +21,6 @@ func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandl
 	router.GET("/transactions", transactionHandler.GetTransactions)
 	router.GET("/transactions/:id", transactionHandler.GetTransaction)
 	router.POST("/transactions/:id/pay", transactionHandler.PayTransaction)
+
+	router.POST("/demo/concurrency", demoHandler.RunConcurrencyDemo)
 }

@@ -38,8 +38,11 @@ func main() {
 	transactionService := services.NewTransactionService(database.DB, ticketRepository, transactionRepository, paymentRepository)
 	transactionHandler := handlers.NewTransactionHandler(transactionService)
 
+	demoService := services.NewDemoService(userService, ticketService, transactionService)
+	demoHandler := handlers.NewDemoHandler(demoService)
+
 	router := gin.Default()
-	routes.Register(router, userHandler, ticketHandler, transactionHandler)
+	routes.Register(router, userHandler, ticketHandler, transactionHandler, demoHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
