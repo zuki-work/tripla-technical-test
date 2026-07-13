@@ -29,4 +29,5 @@ func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandl
 	router.POST("/demo/concurrency", demoHandler.RunConcurrencyDemo)
 	router.POST("/demo/high-traffic", demoHandler.RunHighTrafficDemo)
 	router.POST("/demo/duplicate-payment-webhook", demoHandler.RunDuplicatePaymentWebhookDemo)
+	router.POST("/demo/out-of-order-stock", demoHandler.RunOutOfOrderStockDemo)
 }

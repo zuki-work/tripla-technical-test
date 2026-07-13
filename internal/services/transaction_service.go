@@ -247,6 +247,7 @@ func (s *TransactionService) processNextPendingTransaction() (*models.Transactio
 		}
 
 		ticket.QuantityAvailable -= transaction.Quantity
+		ticket.StockVersion++
 		if err := ticketRepository.Save(ticket); err != nil {
 			return err
 		}
@@ -301,6 +302,7 @@ func (s *TransactionService) PayTransaction(id uint, paymentMethod string) (*Tra
 			}
 
 			ticket.QuantityAvailable += transaction.Quantity
+			ticket.StockVersion++
 			if err := ticketRepository.Save(ticket); err != nil {
 				return err
 			}
@@ -504,6 +506,7 @@ func (s *TransactionService) ExpireWaitingForPaymentTransactions() error {
 			}
 
 			ticket.QuantityAvailable += transaction.Quantity
+			ticket.StockVersion++
 			if err := ticketRepository.Save(ticket); err != nil {
 				return err
 			}

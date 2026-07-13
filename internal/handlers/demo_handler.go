@@ -82,3 +82,19 @@ func (h *DemoHandler) RunDuplicatePaymentWebhookDemo(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": result})
 }
+
+func (h *DemoHandler) RunOutOfOrderStockDemo(c *gin.Context) {
+	var input []services.StockUpdatePayload
+	if err := c.ShouldBindJSON(&input); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.demoService.RunOutOfOrderStockDemo(input)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": result})
+}

@@ -38,6 +38,7 @@ func Connect() error {
 		&models.Ticket{},
 		&models.Transaction{},
 		&models.Payment{},
+		&models.ExternalData{},
 	); err != nil {
 		return fmt.Errorf("database auto-migration failed: %w", err)
 	}

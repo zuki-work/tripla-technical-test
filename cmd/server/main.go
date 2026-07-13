@@ -36,11 +36,12 @@ func main() {
 	transactionRepository := repositories.NewTransactionRepository(database.DB)
 	paymentRepository := repositories.NewPaymentRepository(database.DB)
 	accountingRepository := repositories.NewAccountingRepository()
+	externalDataRepository := repositories.NewExternalDataRepository(database.DB)
 	transactionService := services.NewTransactionService(database.DB, ticketRepository, transactionRepository, paymentRepository, accountingRepository)
 	transactionHandler := handlers.NewTransactionHandler(transactionService)
 	webhookHandler := handlers.NewWebhookHandler(transactionService)
 
-	demoService := services.NewDemoService(userService, ticketService, transactionService)
+	demoService := services.NewDemoService(userService, ticketService, transactionService, externalDataRepository)
 	demoHandler := handlers.NewDemoHandler(demoService)
 
 	router := gin.Default()

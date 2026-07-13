@@ -455,6 +455,37 @@
                                       "response":  [
 
                                                    ]
+                                  },
+                                  {
+                                      "name":  "Run Out Of Order Stock Demo",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "[\n  {\n    \"ticket_id\": 1,\n    \"stock\": 2,\n    \"version\": 2\n  },\n  {\n    \"ticket_id\": 1,\n    \"stock\": 5,\n    \"version\": 1\n  }\n]"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/demo/out-of-order-stock",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "demo",
+                                                                               "out-of-order-stock"
+                                                                           ]
+                                                              },
+                                                      "description":  "Applies multiple incoming stock updates to the mock external_data table in the exact order sent. The request body is a top-level JSON array; each object contains ticket_id, stock, and version. Expected result: version 2 is applied first, then stale version 1 is ignored, so external stock remains 2."
+                                                  },
+                                      "response":  [
+
+                                                   ]
                                   }
                               ]
                  },

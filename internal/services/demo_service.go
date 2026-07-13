@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"tripla-technical-test/internal/models"
+	"tripla-technical-test/internal/repositories"
 )
 
 const (
@@ -56,16 +57,18 @@ type HighTrafficDemoSummary struct {
 }
 
 type DemoService struct {
-	userService        *UserService
-	ticketService      *TicketService
-	transactionService *TransactionService
+	userService            *UserService
+	ticketService          *TicketService
+	transactionService     *TransactionService
+	externalDataRepository *repositories.ExternalDataRepository
 }
 
-func NewDemoService(userService *UserService, ticketService *TicketService, transactionService *TransactionService) *DemoService {
+func NewDemoService(userService *UserService, ticketService *TicketService, transactionService *TransactionService, externalDataRepository *repositories.ExternalDataRepository) *DemoService {
 	return &DemoService{
-		userService:        userService,
-		ticketService:      ticketService,
-		transactionService: transactionService,
+		userService:            userService,
+		ticketService:          ticketService,
+		transactionService:     transactionService,
+		externalDataRepository: externalDataRepository,
 	}
 }
 
@@ -415,5 +418,57 @@ func (s *DemoService) RunDuplicatePaymentWebhookDemo(transactionID uint, externa
 		DuplicateCount:         duplicateCount,
 		PaymentCountInDatabase: paymentCount,
 		Results:                results,
+	}, nil
+}
+
+type StockUpdatePayload struct {
+	TicketID uint `json:"ticket_id"`
+	Stock    uint `json:"stock"`
+	Version  uint `json:"version"`
+}
+
+type StockUpdateDeliveryResult struct {
+	Payload      StockUpdatePayload   `json:"payload"`
+	Applied      bool                 `json:"applied"`
+	ExternalData *models.ExternalData `json:"external_data"`
+}
+
+type OutOfOrderStockDemoSummary struct {
+	UpdatesReceivedOrder []StockUpdateDeliveryResult `json:"updates_received_order"`
+	ExternalFinalStocks  []*models.ExternalData      `json:"external_final_stocks"`
+}
+
+func (s *DemoService) RunOutOfOrderStockDemo(updates []StockUpdatePayload) (*OutOfOrderStockDemoSummary, error) {
+	if len(updates) == 0 {
+		updates = []StockUpdatePayload{
+			{TicketID: 1, Stock: 2, Version: 2},
+			{TicketID: 1, Stock: 5, Version: 1},
+		}
+	}
+
+	deliveryResults := make([]StockUpdateDeliveryResult, 0, len(updates))
+	finalStockByTicketID := make(map[uint]*models.ExternalData)
+	for _, update := range updates {
+		externalData, applied, err := s.externalDataRepository.ApplyTicketStock(update.TicketID, update.Stock, update.Version)
+		if err != nil {
+			return nil, err
+		}
+
+		finalStockByTicketID[update.TicketID] = externalData
+		deliveryResults = append(deliveryResults, StockUpdateDeliveryResult{
+			Payload:      update,
+			Applied:      applied,
+			ExternalData: externalData,
+		})
+	}
+
+	finalStocks := make([]*models.ExternalData, 0, len(finalStockByTicketID))
+	for _, externalData := range finalStockByTicketID {
+		finalStocks = append(finalStocks, externalData)
+	}
+
+	return &OutOfOrderStockDemoSummary{
+		UpdatesReceivedOrder: deliveryResults,
+		ExternalFinalStocks:  finalStocks,
 	}, nil
 }
