@@ -268,6 +268,7 @@
                                                                                "{{baseUrl}}"
                                                                            ],
                                                                   "path":  [
+                                                                               "workers",
                                                                                "transactions",
                                                                                "process-pending"
                                                                            ]
@@ -328,6 +329,30 @@
                                                                            ]
                                                               },
                                                       "description":  "Simulates a successful payment. This only works after the transaction status becomes waiting_for_payment."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  },
+                                  {
+                                      "name":  "Retry Accounting Sync",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/transactions/{{transactionId}}/sync-accounting",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "transactions",
+                                                                               "{{transactionId}}",
+                                                                               "sync-accounting"
+                                                                           ]
+                                                              },
+                                                      "description":  "Manually retries sending a successful transaction to the mock accounting service. Set ACCOUNTING_MOCK_MODE to force_success, force_fail, or leave it empty for random 90/5/5 behavior."
                                                   },
                                       "response":  [
 

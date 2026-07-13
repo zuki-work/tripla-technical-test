@@ -22,6 +22,7 @@ func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandl
 	router.POST("/workers/transactions/process-pending", transactionHandler.ProcessPendingTransactions)
 	router.GET("/transactions/:id", transactionHandler.GetTransaction)
 	router.POST("/transactions/:id/pay", transactionHandler.PayTransaction)
+	router.POST("/transactions/:id/sync-accounting", transactionHandler.SyncTransactionAccounting)
 
 	router.POST("/demo/concurrency", demoHandler.RunConcurrencyDemo)
 	router.POST("/demo/high-traffic", demoHandler.RunHighTrafficDemo)

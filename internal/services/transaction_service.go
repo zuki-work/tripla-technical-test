@@ -26,6 +26,7 @@ var (
 	ErrInsufficientTickets             = errors.New("not enough tickets available")
 	ErrTransactionNotWaitingForPayment = errors.New("transaction is not waiting for payment")
 	ErrTransactionExpired              = errors.New("transaction has expired")
+	ErrTransactionNotSuccess           = errors.New("transaction is not success")
 	errTransactionClaimConflict        = errors.New("transaction was claimed by another worker")
 )
 
@@ -54,14 +55,16 @@ type TransactionService struct {
 	ticketRepository      *repositories.TicketRepository
 	transactionRepository *repositories.TransactionRepository
 	paymentRepository     *repositories.PaymentRepository
+	accountingRepository  *repositories.AccountingRepository
 }
 
-func NewTransactionService(db *gorm.DB, ticketRepository *repositories.TicketRepository, transactionRepository *repositories.TransactionRepository, paymentRepository *repositories.PaymentRepository) *TransactionService {
+func NewTransactionService(db *gorm.DB, ticketRepository *repositories.TicketRepository, transactionRepository *repositories.TransactionRepository, paymentRepository *repositories.PaymentRepository, accountingRepository *repositories.AccountingRepository) *TransactionService {
 	return &TransactionService{
 		db:                    db,
 		ticketRepository:      ticketRepository,
 		transactionRepository: transactionRepository,
 		paymentRepository:     paymentRepository,
+		accountingRepository:  accountingRepository,
 	}
 }
 
@@ -71,11 +74,12 @@ func (s *TransactionService) CreateTransaction(userID, ticketID, quantity uint) 
 	}
 
 	transaction := models.Transaction{
-		RequestID: generateRequestID(),
-		UserID:    userID,
-		TicketID:  ticketID,
-		Quantity:  quantity,
-		Status:    models.TransactionStatusPending,
+		RequestID:        generateRequestID(),
+		UserID:           userID,
+		TicketID:         ticketID,
+		Quantity:         quantity,
+		Status:           models.TransactionStatusPending,
+		AccountingStatus: models.AccountingStatusPending,
 	}
 	if err := s.transactionRepository.Create(&transaction); err != nil {
 		return nil, err
@@ -312,6 +316,8 @@ func (s *TransactionService) PayTransaction(id uint, paymentMethod string) (*Tra
 		}
 
 		transaction.Status = models.TransactionStatusSuccess
+		transaction.AccountingStatus = models.AccountingStatusPending
+		transaction.AccountingSyncedAt = nil
 		if err := transactionRepository.Save(transaction); err != nil {
 			return err
 		}
@@ -324,10 +330,15 @@ func (s *TransactionService) PayTransaction(id uint, paymentMethod string) (*Tra
 		return nil, err
 	}
 
-	transaction, err := s.transactionRepository.FindByID(transactionID)
-	if err != nil {
-		return nil, err
+	transaction, accountingErr := s.SyncTransactionAccounting(transactionID)
+	if transaction == nil {
+		var err error
+		transaction, err = s.transactionRepository.FindByID(transactionID)
+		if err != nil {
+			return nil, err
+		}
 	}
+	_ = accountingErr
 
 	payment, err := s.paymentRepository.FindByID(paymentID)
 	if err != nil {
@@ -335,6 +346,54 @@ func (s *TransactionService) PayTransaction(id uint, paymentMethod string) (*Tra
 	}
 
 	return &TransactionPaymentResult{Transaction: transaction, Payment: payment}, nil
+}
+
+func (s *TransactionService) SyncTransactionAccounting(id uint) (*models.Transaction, error) {
+	transaction, err := s.transactionRepository.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if transaction.Status != models.TransactionStatusSuccess {
+		return nil, ErrTransactionNotSuccess
+	}
+	if transaction.AccountingStatus == models.AccountingStatusSynced {
+		return transaction, nil
+	}
+
+	accountingErr := s.accountingRepository.SendTransaction(transaction)
+
+	var updated *models.Transaction
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		transactionRepository := s.transactionRepository.WithTx(tx)
+		lockedTransaction, err := transactionRepository.FindByIDForUpdate(id)
+		if err != nil {
+			return err
+		}
+		if lockedTransaction.Status != models.TransactionStatusSuccess {
+			return ErrTransactionNotSuccess
+		}
+
+		if accountingErr != nil {
+			lockedTransaction.AccountingStatus = models.AccountingStatusFailed
+			lockedTransaction.AccountingSyncedAt = nil
+		} else {
+			now := time.Now()
+			lockedTransaction.AccountingStatus = models.AccountingStatusSynced
+			lockedTransaction.AccountingSyncedAt = &now
+		}
+
+		if err := transactionRepository.Save(lockedTransaction); err != nil {
+			return err
+		}
+
+		updated = lockedTransaction
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return updated, accountingErr
 }
 
 func (s *TransactionService) ExpireWaitingForPaymentTransactions() error {

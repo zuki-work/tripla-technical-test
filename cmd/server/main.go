@@ -35,7 +35,8 @@ func main() {
 
 	transactionRepository := repositories.NewTransactionRepository(database.DB)
 	paymentRepository := repositories.NewPaymentRepository(database.DB)
-	transactionService := services.NewTransactionService(database.DB, ticketRepository, transactionRepository, paymentRepository)
+	accountingRepository := repositories.NewAccountingRepository()
+	transactionService := services.NewTransactionService(database.DB, ticketRepository, transactionRepository, paymentRepository, accountingRepository)
 	transactionHandler := handlers.NewTransactionHandler(transactionService)
 
 	demoService := services.NewDemoService(userService, ticketService, transactionService)

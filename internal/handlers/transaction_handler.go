@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 
+	"tripla-technical-test/internal/repositories"
 	"tripla-technical-test/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -113,6 +114,27 @@ func (h *TransactionHandler) PayTransaction(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": result})
 }
 
+func (h *TransactionHandler) SyncTransactionAccounting(c *gin.Context) {
+	id, err := parseUintParam(c, "id")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	transaction, err := h.transactionService.SyncTransactionAccounting(id)
+	if err != nil {
+		if isAccountingError(err) {
+			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error(), "data": transaction})
+			return
+		}
+
+		writeTransactionError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": transaction})
+}
+
 func writeTransactionError(c *gin.Context, err error) {
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
@@ -120,9 +142,16 @@ func writeTransactionError(c *gin.Context, err error) {
 	case errors.Is(err, services.ErrInvalidTransactionQuantity),
 		errors.Is(err, services.ErrInsufficientTickets),
 		errors.Is(err, services.ErrTransactionNotWaitingForPayment),
-		errors.Is(err, services.ErrTransactionExpired):
+		errors.Is(err, services.ErrTransactionExpired),
+		errors.Is(err, services.ErrTransactionNotSuccess):
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case isAccountingError(err):
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
+}
+
+func isAccountingError(err error) bool {
+	return errors.Is(err, repositories.ErrAccountingKnownError) || errors.Is(err, repositories.ErrAccountingInternalServerError)
 }
