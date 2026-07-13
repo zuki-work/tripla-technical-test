@@ -38,12 +38,13 @@ func main() {
 	accountingRepository := repositories.NewAccountingRepository()
 	transactionService := services.NewTransactionService(database.DB, ticketRepository, transactionRepository, paymentRepository, accountingRepository)
 	transactionHandler := handlers.NewTransactionHandler(transactionService)
+	webhookHandler := handlers.NewWebhookHandler(transactionService)
 
 	demoService := services.NewDemoService(userService, ticketService, transactionService)
 	demoHandler := handlers.NewDemoHandler(demoService)
 
 	router := gin.Default()
-	routes.Register(router, userHandler, ticketHandler, transactionHandler, demoHandler)
+	routes.Register(router, userHandler, ticketHandler, transactionHandler, webhookHandler, demoHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {

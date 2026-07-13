@@ -290,3 +290,130 @@ func (s *DemoService) RunHighTrafficDemo(requestCount int, ticketStock uint, wor
 		TotalDurationMs:        time.Since(startedAt).Milliseconds(),
 	}, nil
 }
+
+type DuplicatePaymentWebhookDemoResult struct {
+	Attempt   int    `json:"attempt"`
+	PaymentID uint   `json:"payment_id,omitempty"`
+	Duplicate bool   `json:"duplicate"`
+	Error     string `json:"error,omitempty"`
+}
+
+type DuplicatePaymentWebhookDemoSummary struct {
+	User                   *models.User                        `json:"user,omitempty"`
+	Ticket                 *models.Ticket                      `json:"ticket,omitempty"`
+	Transaction            *models.Transaction                 `json:"transaction"`
+	ExternalPaymentID      string                              `json:"external_payment_id"`
+	ConcurrentRequests     int                                 `json:"concurrent_requests"`
+	CreatedCount           int                                 `json:"created_count"`
+	DuplicateCount         int                                 `json:"duplicate_count"`
+	PaymentCountInDatabase int64                               `json:"payment_count_in_database"`
+	Results                []DuplicatePaymentWebhookDemoResult `json:"results"`
+}
+
+func (s *DemoService) RunDuplicatePaymentWebhookDemo(transactionID uint, externalPaymentID string, concurrentRequests int) (*DuplicatePaymentWebhookDemoSummary, error) {
+	if concurrentRequests <= 0 {
+		concurrentRequests = 2
+	}
+	if concurrentRequests > 20 {
+		concurrentRequests = 20
+	}
+	if externalPaymentID == "" {
+		externalPaymentID = fmt.Sprintf("pay_duplicate_demo_%d", time.Now().UnixNano())
+	}
+
+	var user *models.User
+	var ticket *models.Ticket
+	if transactionID == 0 {
+		now := time.Now().UnixNano()
+		createdUser, err := s.userService.CreateUser(&models.User{
+			Name:  "Duplicate Webhook Demo User",
+			Email: fmt.Sprintf("duplicate-webhook-demo-%d@example.com", now),
+		})
+		if err != nil {
+			return nil, err
+		}
+		user = createdUser
+
+		createdTicket, err := s.ticketService.CreateTicket(&models.Ticket{
+			Name:          fmt.Sprintf("Duplicate Webhook Demo Ticket %d", now),
+			QuantityTotal: 1,
+		})
+		if err != nil {
+			return nil, err
+		}
+		ticket = createdTicket
+
+		transaction, err := s.transactionService.CreateTransaction(user.ID, ticket.ID, 1)
+		if err != nil {
+			return nil, err
+		}
+		transactionID = transaction.ID
+
+		if _, err := s.transactionService.ProcessPendingTransactions(1); err != nil {
+			return nil, err
+		}
+	}
+
+	results := make([]DuplicatePaymentWebhookDemoResult, concurrentRequests)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := 0; i < concurrentRequests; i++ {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			<-start
+
+			result, err := s.transactionService.HandlePaymentWebhook(externalPaymentID, transactionID, models.PaymentStatusSuccess, "third_party", nil)
+			results[index] = DuplicatePaymentWebhookDemoResult{Attempt: index + 1}
+			if err != nil {
+				results[index].Error = err.Error()
+				return
+			}
+
+			results[index].Duplicate = result.Duplicate
+			if result.Payment != nil {
+				results[index].PaymentID = result.Payment.ID
+			}
+		}(i)
+	}
+	close(start)
+	wg.Wait()
+
+	createdCount := 0
+	duplicateCount := 0
+	for i := range results {
+		if results[i].Error != "" {
+			continue
+		}
+		if results[i].Duplicate {
+			duplicateCount++
+		} else {
+			createdCount++
+		}
+	}
+
+	paymentCount, err := s.transactionService.CountPaymentsByExternalPaymentID(externalPaymentID)
+	if err != nil {
+		return nil, err
+	}
+
+	transaction, err := s.transactionService.GetTransaction(transactionID)
+	if err != nil {
+		return nil, err
+	}
+	if ticket == nil && transaction.TicketID != 0 {
+		ticket, _ = s.ticketService.GetTicket(transaction.TicketID)
+	}
+
+	return &DuplicatePaymentWebhookDemoSummary{
+		User:                   user,
+		Ticket:                 ticket,
+		Transaction:            transaction,
+		ExternalPaymentID:      externalPaymentID,
+		ConcurrentRequests:     concurrentRequests,
+		CreatedCount:           createdCount,
+		DuplicateCount:         duplicateCount,
+		PaymentCountInDatabase: paymentCount,
+		Results:                results,
+	}, nil
+}

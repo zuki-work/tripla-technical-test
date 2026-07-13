@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandler *handlers.TicketHandler, transactionHandler *handlers.TransactionHandler, demoHandler *handlers.DemoHandler) {
+func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandler *handlers.TicketHandler, transactionHandler *handlers.TransactionHandler, webhookHandler *handlers.WebhookHandler, demoHandler *handlers.DemoHandler) {
 	router.GET("/", handlers.Home)
 	router.GET("/health", handlers.Health)
 
@@ -24,6 +24,9 @@ func Register(router *gin.Engine, userHandler *handlers.UserHandler, ticketHandl
 	router.POST("/transactions/:id/pay", transactionHandler.PayTransaction)
 	router.POST("/transactions/:id/sync-accounting", transactionHandler.SyncTransactionAccounting)
 
+	router.POST("/webhooks/payments", webhookHandler.HandlePaymentWebhook)
+
 	router.POST("/demo/concurrency", demoHandler.RunConcurrencyDemo)
 	router.POST("/demo/high-traffic", demoHandler.RunHighTrafficDemo)
+	router.POST("/demo/duplicate-payment-webhook", demoHandler.RunDuplicatePaymentWebhookDemo)
 }

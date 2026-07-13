@@ -424,6 +424,73 @@
                                       "response":  [
 
                                                    ]
+                                  },
+                                  {
+                                      "name":  "Run Duplicate Payment Webhook Demo",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"external_payment_id\": \"pay_duplicate_demo_001\",\n  \"concurrent_requests\": 2\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/demo/duplicate-payment-webhook",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "demo",
+                                                                               "duplicate-payment-webhook"
+                                                                           ]
+                                                              },
+                                                      "description":  "Creates a ready transaction when transaction_id is omitted, then sends the same payment webhook concurrently. Expected result: created_count = 1, duplicate_count = concurrent_requests - 1, payment_count_in_database = 1."
+                                                  },
+                                      "response":  [
+
+                                                   ]
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Webhooks",
+                     "item":  [
+                                  {
+                                      "name":  "Payment Webhook",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json",
+                                                                         "type":  "text"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"external_payment_id\": \"pay_demo_001\",\n  \"transaction_id\": {{transactionId}},\n  \"status\": \"success\",\n  \"payment_method\": \"third_party\"\n}"
+                                                               },
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/webhooks/payments",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "webhooks",
+                                                                               "payments"
+                                                                           ]
+                                                              },
+                                                      "description":  "Receives third-party payment webhook data. external_payment_id is unique/idempotent, so duplicate webhook retries return success without creating another payment row."
+                                                  },
+                                      "response":  [
+
+                                                   ]
                                   }
                               ]
                  }

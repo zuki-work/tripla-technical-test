@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"tripla-technical-test/internal/models"
@@ -26,6 +27,7 @@ var (
 	ErrInsufficientTickets             = errors.New("not enough tickets available")
 	ErrTransactionNotWaitingForPayment = errors.New("transaction is not waiting for payment")
 	ErrTransactionExpired              = errors.New("transaction has expired")
+	ErrInvalidPaymentWebhook           = errors.New("external payment id and transaction id are required")
 	ErrTransactionNotSuccess           = errors.New("transaction is not success")
 	errTransactionClaimConflict        = errors.New("transaction was claimed by another worker")
 )
@@ -33,6 +35,12 @@ var (
 type TransactionPaymentResult struct {
 	Transaction *models.Transaction `json:"transaction"`
 	Payment     *models.Payment     `json:"payment"`
+}
+
+type PaymentWebhookResult struct {
+	Transaction *models.Transaction `json:"transaction"`
+	Payment     *models.Payment     `json:"payment"`
+	Duplicate   bool                `json:"duplicate"`
 }
 
 type ProcessPendingTransactionResult struct {
@@ -396,6 +404,86 @@ func (s *TransactionService) SyncTransactionAccounting(id uint) (*models.Transac
 	return updated, accountingErr
 }
 
+func (s *TransactionService) HandlePaymentWebhook(externalPaymentID string, transactionID uint, status string, paymentMethod string, paidAt *time.Time) (*PaymentWebhookResult, error) {
+	externalPaymentID = strings.TrimSpace(externalPaymentID)
+	if externalPaymentID == "" || transactionID == 0 {
+		return nil, ErrInvalidPaymentWebhook
+	}
+	if status == "" {
+		status = models.PaymentStatusSuccess
+	}
+	if paymentMethod == "" {
+		paymentMethod = "third_party"
+	}
+	if paidAt == nil {
+		now := time.Now()
+		paidAt = &now
+	}
+
+	payment := models.Payment{
+		ExternalPaymentID: &externalPaymentID,
+		TransactionID:     transactionID,
+		Status:            status,
+		PaymentMethod:     paymentMethod,
+		PaidAt:            paidAt,
+	}
+
+	var updatedTransaction *models.Transaction
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		transactionRepository := s.transactionRepository.WithTx(tx)
+		paymentRepository := s.paymentRepository.WithTx(tx)
+
+		if err := paymentRepository.Create(&payment); err != nil {
+			return err
+		}
+
+		transaction, err := transactionRepository.FindByIDForUpdate(transactionID)
+		if err != nil {
+			return err
+		}
+
+		if status == models.PaymentStatusSuccess {
+			transaction.Status = models.TransactionStatusSuccess
+			transaction.AccountingStatus = models.AccountingStatusPending
+			transaction.AccountingSyncedAt = nil
+			if err := transactionRepository.Save(transaction); err != nil {
+				return err
+			}
+		}
+
+		updatedTransaction = transaction
+		return nil
+	})
+	if err != nil {
+		if isDuplicateMySQLKeyError(err) {
+			existingPayment, findErr := s.paymentRepository.FindByExternalPaymentID(externalPaymentID)
+			if findErr != nil {
+				return nil, findErr
+			}
+
+			transaction, findErr := s.transactionRepository.FindByID(existingPayment.TransactionID)
+			if findErr != nil {
+				return nil, findErr
+			}
+
+			return &PaymentWebhookResult{Transaction: transaction, Payment: existingPayment, Duplicate: true}, nil
+		}
+
+		return nil, err
+	}
+
+	if status == models.PaymentStatusSuccess {
+		if syncedTransaction, syncErr := s.SyncTransactionAccounting(transactionID); syncedTransaction != nil {
+			updatedTransaction = syncedTransaction
+			_ = syncErr
+		}
+	}
+
+	return &PaymentWebhookResult{Transaction: updatedTransaction, Payment: &payment, Duplicate: false}, nil
+}
+func (s *TransactionService) CountPaymentsByExternalPaymentID(externalPaymentID string) (int64, error) {
+	return s.paymentRepository.CountByExternalPaymentID(externalPaymentID)
+}
 func (s *TransactionService) ExpireWaitingForPaymentTransactions() error {
 	now := time.Now()
 
@@ -428,6 +516,15 @@ func (s *TransactionService) ExpireWaitingForPaymentTransactions() error {
 
 		return nil
 	})
+}
+
+func isDuplicateMySQLKeyError(err error) bool {
+	var mysqlErr *mysqlDriver.MySQLError
+	if !errors.As(err, &mysqlErr) {
+		return false
+	}
+
+	return mysqlErr.Number == 1062
 }
 
 func isRetryableMySQLLockError(err error) bool {
