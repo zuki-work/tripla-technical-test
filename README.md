@@ -1,4 +1,4 @@
-# Tripla Technical Test
+# Ticket Management System
 
 API manajemen transaksi tiket konser menggunakan Go, Gin, GORM, dan MySQL.
 
