@@ -54,7 +54,7 @@ func (r *TransactionRepository) FindByIDForUpdate(id uint) (*models.Transaction,
 
 func (r *TransactionRepository) FindNextPending() (*models.Transaction, error) {
 	var transaction models.Transaction
-	if err := r.db.Where("status = ?", models.TransactionStatusPending).Order("id ASC").First(&transaction).Error; err != nil {
+	if err := r.db.Where("status = ?", models.TransactionStatusPending).Order("created_at ASC, id ASC").First(&transaction).Error; err != nil {
 		return nil, err
 	}
 
